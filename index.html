@@ -20,7 +20,7 @@ button.s{font-size:15px;padding:8px 18px;background:#2a2550;box-shadow:none}
 <div class="ov" id="menu">
 <h1>قفّاز المدارات</h1>
 <p>أنت في مدار كوكب. دوس على الشاشة تنطلق في خط مستقيم، وقرّب من كوكب تاني عشان الجاذبية تمسكك. طلّع لفوق أعلى ما تقدر.</p>
-<p>🔴 بعد كام مدار فراغ أحمر بيطلع من تحت ويجري وراك. المذنّبات خطر، والساعة ⏱️ بتبطّأ الوقت.</p><p>❄️ جليد = اندفاعة أقوى · ☀️ شمس = نقط x3 بس بتنهار بسرعة · 🪐 عملاق غازي = مدار واسع وأمان أكتر.</p><p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
+<p>🔴 بعد كام مدار فراغ أحمر بيطلع من تحت ويجري وراك. المذنّبات خطر، والساعة ⏱️ بتبطّأ الوقت.</p><p>❄️ جليد = اندفاعة أقوى · ☀️ شمس = نقط x3 بس بتنهار بسرعة · 🪐 عملاق غازي = مدار واسع وأمان أكتر.</p><p>🌀 بوابتين زرقا: ادخل واحدة واطلع من التانية.</p><p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
 <div id="best"></div>
 <div class="ships" id="ships"></div>
 <button id="play">ابدأ</button>
@@ -57,6 +57,7 @@ function gen(){const lvl=S.hops;const gap=Math.min(150+lvl*3,260);S.genY+=R(gap*
    const q=mkPlanet(R(-half,half),S.genY+R(40,90),'normal');S.planets.push(q)}
  // items
  if(Math.random()<.7){const s=S.items.push({x:p.x+R(-90,90),y:p.y+R(60,140),k:Math.random()<.1?'shield':Math.random()<.08?'magnet':Math.random()<.07?'clock':'star',a:1})}
+ if(lvl>6&&Math.random()<.22){const x1=R(-half,half),x2=R(-half,half);const pa={x:x1,y:S.genY+50,k:'portal',a:1,cd:0};const pb={x:x2,y:S.genY+330,k:'portal',a:1,cd:0};pa.o=pb;pb.o=pa;S.items.push(pa,pb)}
  if(lvl>2&&Math.random()<.25){S.items.push({x:p.x+R(-70,70),y:p.y+R(90,170),k:'boost',a:1})}
  if(lvl>9&&Math.random()<.3){const dr=Math.random()<.5?1:-1;S.items.push({x:-dr*(Math.max(W,420)/2+30),y:S.genY+R(60,140),k:'comet',a:1,vx:dr*R(110,190)})}
  if(lvl>6&&Math.random()<.3){S.items.push({x:R(-half,half),y:S.genY+R(80,150),k:'mine',a:1,ph:R(0,6)})}}
@@ -102,6 +103,7 @@ if(S.invuln>0)S.invuln-=dt;
  // items
  for(const it of S.items){if(it.k==='comet'){it.x+=it.vx*dt;if(Math.abs(it.x)>Math.max(W,420)/2+40)it.vx*=-1}
   if(it.a<=0)continue;const dx=it.x-a.x,dy=it.y-a.y,d=Math.hypot(dx,dy);
+  if(it.k==='portal'){if(it.cd>0)it.cd-=dt;if(S.state==='fly'&&it.cd<=0&&Math.hypot(it.x-a.x,it.y-a.y)<26){const o=it.o;o.cd=1;it.cd=1;burst(it.x,it.y,'#6cf',16,220);S.px=o.x;S.py=o.y;S.score+=20;msg('بوابة 🌀 +20','#6cf');beep(500,.25,'sine',.07,2.2);burst(o.x,o.y,'#6cf',16,220);S.trail.length=0}continue}
   if(S.magnet>0&&it.k==='star'&&d<200){it.x-=dx/d*300*dt;it.y-=dy/d*300*dt}
   if(d<24){it.a=it.k==='comet'?1:0;if(it.k==='star'){S.starsGot++;S.score+=5;beep(880,.12,'sine',.06);burst(it.x,it.y,'#fd6',8,120)}else if(it.k==='shield'){S.shield=1;msg('درع 🛡️','#7cf');beep(600,.3,'triangle',.07)}else if(it.k==='magnet'){S.magnet=8;msg('مغناطيس 🧲','#f7c');beep(500,.3,'triangle',.07)}else if(it.k==='boost'){if(S.state==='fly'){S.vx*=1.5;S.vy*=1.5}S.score+=15;msg('بوست 🚀 +15','#fa6');beep(900,.15,'sawtooth',.05,2);burst(it.x,it.y,'#fa6',14,200)}else if(it.k==='clock'){S.slow=6;msg('وقت بطيء ⏱️','#9ff');beep(300,.4,'sine',.07,.6)}else if(it.k==='comet'){it.a=1;if(d<20)die('comet')}else if(it.k==='mine'){die('mine');burst(it.x,it.y,'#f55',20,200)}}}
  if(S.magnet>0)S.magnet-=dt;
@@ -137,6 +139,7 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
  for(const it of S.items){if(it.a<=0)continue;const x=sx(it.x),y=sy(it.y);if(y<-30||y>H+30)continue;g.font='20px sans-serif';g.textAlign='center';g.textBaseline='middle';
   if(it.k==='star'){g.fillStyle='#fd6';g.beginPath();for(let i=0;i<10;i++){const r=i%2?5:11,a=-1.57+i*.628;g.lineTo(x+Math.cos(a+S.t)*r,y+Math.sin(a+S.t)*r)}g.fill()}
   else if(it.k==='mine'){g.fillStyle='#f44';g.beginPath();g.arc(x,y,9,0,6.3);g.fill();g.strokeStyle='#f88';g.lineWidth=2;for(let i=0;i<8;i++){const a=i*.785+S.t*2;g.beginPath();g.moveTo(x+Math.cos(a)*9,y+Math.sin(a)*9);g.lineTo(x+Math.cos(a)*15,y+Math.sin(a)*15);g.stroke()}}
+  else if(it.k==='portal'){for(let k=0;k<3;k++){g.strokeStyle='rgba(100,200,255,'+(.9-k*.25)+')';g.lineWidth=3;g.beginPath();g.ellipse(x,y,16-k*4,16-k*4,S.t*3*(k%2?-1:1),0,4.7);g.stroke()}}
   else if(it.k==='boost'){g.strokeStyle='#fa6';g.lineWidth=4;g.beginPath();g.arc(x,y,11+2*Math.sin(S.t*8),0,6.3);g.stroke();g.beginPath();g.moveTo(x-4,y+4);g.lineTo(x,y-5);g.lineTo(x+4,y+4);g.stroke()}
   else if(it.k==='comet'){const gx=g.createLinearGradient(x,y,x-it.vx*.6,y);gx.addColorStop(0,'rgba(120,230,255,.9)');gx.addColorStop(1,'rgba(120,230,255,0)');g.strokeStyle=gx;g.lineWidth=8;g.lineCap='round';g.beginPath();g.moveTo(x,y);g.lineTo(x-it.vx*.6,y);g.stroke();g.fillStyle='#fff';g.beginPath();g.arc(x,y,8,0,6.3);g.fill()}
   else g.fillText(it.k==='shield'?'🛡️':it.k==='clock'?'⏱️':'🧲',x,y)}
