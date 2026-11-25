@@ -39,7 +39,7 @@ const R=(a,b)=>a+Math.random()*(b-a);
 const MT=[{t:'اجمع 15 نجمة في لعبة واحدة',k:'stars',n:15,r:8},{t:'اعمل 12 مدار في لعبة واحدة',k:'hops',n:12,r:10},{t:'وصّل كومبو x5',k:'combo',n:5,r:8},{t:'اوصل نتيجة 600',k:'score',n:600,r:12},{t:'اجمع 30 نجمة في لعبة واحدة',k:'stars',n:30,r:15},{t:'اعمل 25 مدار في لعبة واحدة',k:'hops',n:25,r:20},{t:'وصّل كومبو x10',k:'combo',n:10,r:20},{t:'اوصل نتيجة 1500',k:'score',n:1500,r:25}];
 function pickMissions(){save.ms=save.ms||[];while(save.ms.length<3){const c=MT[Math.floor(Math.random()*MT.length)];if(!save.ms.includes(MT.indexOf(c)))save.ms.push(MT.indexOf(c))}}
 function checkMissions(sc){const done=[];save.ms=save.ms.filter(i=>{const m=MT[i];const v=m.k==='stars'?S.starsGot:m.k==='hops'?S.hops:m.k==='combo'?S.maxCombo:sc;if(v>=m.n){save.stars+=m.r;done.push(m);return false}return true});pickMissions();return done}
-const ACH=[{id:'h10',t:'🌍 10 مدارات في لعبة',f:()=>S.hops>=10},{id:'h30',t:'🚀 30 مدار في لعبة',f:()=>S.hops>=30},{id:'c10',t:'🔥 كومبو x10',f:()=>S.maxCombo>=10},{id:'s25',t:'⭐ 25 نجمة في لعبة',f:()=>S.starsGot>=25},{id:'sun',t:'☀️ حط على شمس',f:()=>S.cur&&S.cur.type==='sun'&&S.state==='orbit'},{id:'z2',t:'🌌 وصّل المنطقة التانية',f:()=>S.zone>=1},{id:'z4',t:'🌠 وصّل حافة الكون',f:()=>S.zone>=4},{id:'sc2k',t:'🏆 2000 نقطة',f:()=>S.score+S.top/10>=2000}];
+const ACH=[{id:'cl5',t:'⚡ 5 قفزات سريعة في لعبة',f:()=>(S.close||0)>=5},{id:'h10',t:'🌍 10 مدارات في لعبة',f:()=>S.hops>=10},{id:'h30',t:'🚀 30 مدار في لعبة',f:()=>S.hops>=30},{id:'c10',t:'🔥 كومبو x10',f:()=>S.maxCombo>=10},{id:'s25',t:'⭐ 25 نجمة في لعبة',f:()=>S.starsGot>=25},{id:'sun',t:'☀️ حط على شمس',f:()=>S.cur&&S.cur.type==='sun'&&S.state==='orbit'},{id:'z2',t:'🌌 وصّل المنطقة التانية',f:()=>S.zone>=1},{id:'z4',t:'🌠 وصّل حافة الكون',f:()=>S.zone>=4},{id:'sc2k',t:'🏆 2000 نقطة',f:()=>S.score+S.top/10>=2000}];
 function checkAch(){for(const a of ACH){if(!save.ach[a.id]&&a.f()){save.ach[a.id]=1;save.stars+=5;persist();msg('🎖️ إنجاز: '+a.t.replace(/^\S+\s/,'')+' (+5⭐)','#fd6');beep(1000,.3,'triangle',.07)}}}
 let S;// state
 let stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random(),y:Math.random(),z:R(.1,.6),s:R(.6,2)});
@@ -65,12 +65,13 @@ function gen(){const lvl=S.hops;const gap=Math.min(150+lvl*3,260);S.genY+=R(gap*
 function pos(p){return p.type==='mover'?p.bx+Math.sin(S.t*p.sp+p.ph)*p.amp:p.x}
 function burst(x,y,col,n,sp){for(let i=0;i<n;i++){const a=R(0,6.28),v=R(.3,1)*(sp||160);S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:R(.4,.9),m:.9,c:col,s:R(1.5,4)})}}
 function msg(t,c){S.msgs.push({t,c:c||'#fff',l:1.4})}
-function launch(){if(S.state!=='orbit')return;const p=S.cur;let sp=330+Math.min(S.hops*6,140);if(p.type==='ice'){sp*=1.35;msg('دفعة جليد ❄️','#9ef')}
+function launch(){if(S.state!=='orbit')return;S.lt=S.t;const p=S.cur;let sp=330+Math.min(S.hops*6,140);if(p.type==='ice'){sp*=1.35;msg('دفعة جليد ❄️','#9ef')}
  const A0=absPos();S.px=A0.x;S.py=A0.y;const tx=-Math.sin(S.ang)*S.dir,ty=Math.cos(S.ang)*S.dir;S.vx=tx*sp;S.vy=ty*sp;S.state='fly';S.lastCur=p;S.leave=S.t;beep(520,.18,'triangle',.07,2);burst(S.px,S.py,'#fff',8,90);}
 function capture(p){S.state='orbit';S.cur=p;const dx=S.px-pos(p),dy=S.py-p.y;const d=Math.hypot(dx,dy);S.orR=Math.max(p.r+14,Math.min(d,p.ring));S.ang=Math.atan2(dy,dx);
  // direction from cross product
  const cr=dx*S.vy-dy*S.vx;S.dir=cr>=0?1:-1;S.px=pos(p)-pos(p);// we store position relative to planet
  S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;p.life=1;
+ if(!p.used&&S.lt&&S.t-S.lt<0.5){S.close=(S.close||0)+1;S.score+=25;msg('قفزة سريعة! ⚡ +25','#6ff');burst(pos(p),p.y,'#6ff',22,240);beep(1100,.15,'triangle',.07)}
  if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo*(p.type==='sun'?3:1);S.score+=gain*(save.ship===1?1.15:1);beep(300+S.combo*40,.2,'sine',.08);if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
  else{S.combo=0}}
 // world coords for player: orbit => relative, fly => absolute. unify with absolute
