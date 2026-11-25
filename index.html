@@ -95,7 +95,7 @@ if(S.invuln>0)S.invuln-=dt;
    if(p.type==='hole'&&d<p.r*0.9){die('hole')}
    if(d<p.r*.85&&p.type!=='hole'&&!(p===S.lastCur&&S.t-S.leave<.5)){if(p.type==='anti'){S.vx=-dx/d*400;S.vy=-dy/d*400;beep(260,.15,'square',.06)}else die('crumble')}
    else if(d<p.ring&&d>p.r*.85&&p.type!=='hole'&&p.type!=='anti'&&!(p===S.lastCur&&S.t-S.leave<.45)&&!p.dead){capture(p);break}}
-  if(S.state==='fly'){S.vx+=ax*dt;S.vy+=ay*dt;if(S.magnet>0){}S.px+=S.vx*dt;S.py+=S.vy*dt;S.trail.push({x:S.px,y:S.py,l:.6});
+  if(S.state==='fly'){S.vx+=ax*dt;S.vy+=ay*dt;if(S.magnet>0){}S.px+=S.vx*dt;S.py+=S.vy*dt;S.trail.push({x:S.px,y:S.py,l:save.ship===4?1.3:.6});if(save.ship===1&&Math.random()<.7)S.parts.push({x:S.px,y:S.py,vx:R(-40,40),vy:R(-40,40),l:.5,m:.5,c:Math.random()<.5?'#f96':'#fd6',s:R(2,4)});if(save.ship===2&&Math.random()<.4)S.parts.push({x:S.px,y:S.py,vx:R(-30,30),vy:R(-30,30),l:.6,m:.6,c:'#6f9',s:R(3,5)});if(save.ship===3&&Math.random()<.6)S.parts.push({x:S.px+R(-6,6),y:S.py+R(-6,6),vx:0,vy:0,l:.7,m:.7,c:'#fff3a0',s:R(1.5,3.5)});
    if(S.py<S.camY-H*.7&&S.t-S.leave>0.5||Math.abs(S.px)>Math.max(W,420)*1.1||S.py<S.top-H*1.2)die('out');
    if(S.t-S.leave>4.5)die('out')}}
  const a=absPos();
@@ -144,7 +144,7 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
   else if(it.k==='comet'){const gx=g.createLinearGradient(x,y,x-it.vx*.6,y);gx.addColorStop(0,'rgba(120,230,255,.9)');gx.addColorStop(1,'rgba(120,230,255,0)');g.strokeStyle=gx;g.lineWidth=8;g.lineCap='round';g.beginPath();g.moveTo(x,y);g.lineTo(x-it.vx*.6,y);g.stroke();g.fillStyle='#fff';g.beginPath();g.arc(x,y,8,0,6.3);g.fill()}
   else g.fillText(it.k==='shield'?'🛡️':it.k==='clock'?'⏱️':'🧲',x,y)}
  // trail
- for(const t of S.trail){g.globalAlpha=Math.max(0,t.l);g.fillStyle=SHIPS[save.ship].c;g.beginPath();g.arc(sx(t.x),sy(t.y),3*t.l+1,0,6.3);g.fill()}g.globalAlpha=1;
+ for(const t of S.trail){g.globalAlpha=Math.max(0,t.l);g.fillStyle=SHIPS[save.ship].c;g.beginPath();g.arc(sx(t.x),sy(t.y),(save.ship===4?5:3)*Math.min(1,t.l)+1,0,6.3);g.fill()}g.globalAlpha=1;
  // ship
  if(!S.dead){const a=absPos();let rot;if(S.state==='orbit')rot=S.ang+(S.dir>0?Math.PI:0)+(S.dir>0?0:0)+(S.dir>0?0:Math.PI)+Math.PI/2*0;else rot=Math.atan2(S.vy,S.vx)+Math.PI/2;
   if(S.state==='orbit')rot=Math.atan2(Math.cos(S.ang)*S.dir,-Math.sin(S.ang)*S.dir)+Math.PI/2;
