@@ -30,7 +30,7 @@ button.s{font-size:15px;padding:8px 18px;background:#2a2550;box-shadow:none}
 <script>
 const cv=document.getElementById('c'),g=cv.getContext('2d');
 let W,H,DPR;function rs(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0)}rs();addEventListener('resize',rs);
-const SAVE='orbit_hopper_v1';let save={best:0,stars:0,ship:0,snd:1};try{Object.assign(save,JSON.parse(localStorage.getItem(SAVE)||'{}'))}catch(e){}
+const SAVE='orbit_hopper_v1';let save={bestTop:0,best:0,stars:0,ship:0,snd:1};try{Object.assign(save,JSON.parse(localStorage.getItem(SAVE)||'{}'))}catch(e){}
 function persist(){try{localStorage.setItem(SAVE,JSON.stringify(save))}catch(e){}}
 const ZN=['الفضاء القريب','سحابة النيون','حزام النيازك','قلب المجرة','حافة الكون'];const SHIPS=[{n:'الكشّاف',c:'#7cf',cost:0,d:'عادي'},{n:'النار',c:'#f96',cost:15,d:'نقط +15%'},{n:'الزمرد',c:'#6f9',cost:40,d:'بيبدأ بدرع'},{n:'الملكي',c:'#fd6',cost:80,d:'مغناطيس دايم'},{n:'الشبح',c:'#c8f',cost:150,d:'الكوكب بينهار أبطأ 25%'}];
 // audio
@@ -67,12 +67,13 @@ function capture(p){S.state='orbit';S.cur=p;const dx=S.px-pos(p),dy=S.py-p.y;con
  // direction from cross product
  const cr=dx*S.vy-dy*S.vx;S.dir=cr>=0?1:-1;S.px=pos(p)-pos(p);// we store position relative to planet
  S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;p.life=1;
- if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo*(p.type==='sun'?3:1);S.score+=gain*(save.ship===1?1.15:1);beep(300+S.combo*40,.2,'sine',.08);msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
+ if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo*(p.type==='sun'?3:1);S.score+=gain*(save.ship===1?1.15:1);beep(300+S.combo*40,.2,'sine',.08);if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
  else{S.combo=0}}
 // world coords for player: orbit => relative, fly => absolute. unify with absolute
 function absPos(){return S.state==='orbit'?{x:pos(S.cur)+S.px,y:S.cur.y+S.py}:{x:S.px,y:S.py}}
 function die(why){if(S.dead)return;if(S.shield>0&&why!=='out'){S.shield=0;burst(absPos().x,absPos().y,'#7cf',24,260);beep(200,.3,'square',.08,.5);msg('الدرع اتكسر','#7cf');S.shield=0;S.invuln=1.2;if(S.state==='fly'){const a=absPos();/*bounce away*/S.vx*=-.5;S.vy=Math.abs(S.vy)*.5+80}return}
  if(S.invuln>0&&why!=='out')return;S.dead=true;S.shake=1;const a=absPos();burst(a.x,a.y,SHIPS[save.ship].c,40,300);beep(140,.7,'sawtooth',.1,.3);
+ if(S.top>save.bestTop)save.bestTop=S.top;if(navigator.vibrate)try{navigator.vibrate([60,40,120])}catch(e){}
  save.stars+=S.starsGot;const sc=Math.floor(S.score+S.top/10);S.final=sc;const dm=checkMissions(sc);const nb=sc>save.best;if(nb)save.best=sc;persist();
  setTimeout(()=>{document.getElementById('res').innerHTML='النتيجة: <b>'+sc+'</b><br>أعلى نتيجة: '+save.best+(nb?' 🏆 رقم قياسي جديد!':'')+'<br>⭐ '+S.starsGot+' (إجمالي '+save.stars+')<br>مدارات: '+S.hops+(dm.length?'<br>✅ مهمة خلصت: '+dm.map(m=>m.t+' (+'+m.r+'⭐)').join('، '):'')+(why==='crumble'?'<br>الكوكب انهار عليك':why==='hole'?'<br>ثقب أسود بلعك':why==='mine'?'<br>لغم':why==='out'?'<br>خرجت من المجال':why==='wall'?'<br>الفراغ الأحمر لحقك':why==='comet'?'<br>مذنّب ضربك':'');document.getElementById('over').classList.remove('hide')},900)}
 let running=false,last=0;
@@ -146,6 +147,7 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
   if(S.shield>0){g.strokeStyle='#7cf';g.lineWidth=2;g.beginPath();g.arc(sx(a.x),sy(a.y),20,0,6.3);g.stroke()}
   if(S.magnet>0){g.strokeStyle='rgba(255,120,200,.5)';g.beginPath();g.arc(sx(a.x),sy(a.y),200*(.8+.2*Math.sin(S.t*8)),0,6.3);g.stroke()}}
  for(const p of S.parts){g.globalAlpha=Math.max(0,p.l/p.m);g.fillStyle=p.c;g.fillRect(sx(p.x)-p.s/2,sy(p.y)-p.s/2,p.s,p.s)}g.globalAlpha=1;
+ {if(save.bestTop>0){const by=sy(save.bestTop);if(by>-20&&by<H+20){g.strokeStyle='rgba(255,215,0,.7)';g.setLineDash([10,8]);g.lineWidth=2;g.beginPath();g.moveTo(0,by);g.lineTo(W,by);g.stroke();g.setLineDash([]);g.fillStyle='#fd6';g.font='700 12px system-ui';g.textAlign='left';g.fillText('🏆 رقمك القياسي',10,by-14)}}}
  {const wy=sy(S.wall);if(wy<H+50){const wg=g.createLinearGradient(0,wy-90,0,wy+4);wg.addColorStop(0,'rgba(255,40,60,0)');wg.addColorStop(1,'rgba(255,40,60,.75)');g.fillStyle=wg;g.fillRect(0,wy-90,W,94);g.fillStyle='#200';g.fillRect(0,wy,W,H);g.strokeStyle='#f64';g.lineWidth=3;g.beginPath();for(let x=0;x<=W;x+=12)g.lineTo(x,wy+Math.sin(x*.05+S.t*4)*4);g.stroke()}}
  g.restore();
  // HUD
