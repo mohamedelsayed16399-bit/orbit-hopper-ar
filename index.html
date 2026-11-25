@@ -20,7 +20,7 @@ button.s{font-size:15px;padding:8px 18px;background:#2a2550;box-shadow:none}
 <div class="ov" id="menu">
 <h1>قفّاز المدارات</h1>
 <p>أنت في مدار كوكب. دوس على الشاشة تنطلق في خط مستقيم، وقرّب من كوكب تاني عشان الجاذبية تمسكك. طلّع لفوق أعلى ما تقدر.</p>
-<p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
+<p>🔴 بعد كام مدار فراغ أحمر بيطلع من تحت ويجري وراك. المذنّبات خطر، والساعة ⏱️ بتبطّأ الوقت.</p><p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
 <div id="best"></div>
 <div class="ships" id="ships"></div>
 <button id="play">ابدأ</button>
@@ -32,13 +32,16 @@ const cv=document.getElementById('c'),g=cv.getContext('2d');
 let W,H,DPR;function rs(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0)}rs();addEventListener('resize',rs);
 const SAVE='orbit_hopper_v1';let save={best:0,stars:0,ship:0,snd:1};try{Object.assign(save,JSON.parse(localStorage.getItem(SAVE)||'{}'))}catch(e){}
 function persist(){try{localStorage.setItem(SAVE,JSON.stringify(save))}catch(e){}}
-const SHIPS=[{n:'الكشّاف',c:'#7cf',cost:0},{n:'النار',c:'#f96',cost:15},{n:'الزمرد',c:'#6f9',cost:40},{n:'الملكي',c:'#fd6',cost:80},{n:'الشبح',c:'#c8f',cost:150}];
+const ZN=['الفضاء القريب','سحابة النيون','حزام النيازك','قلب المجرة','حافة الكون'];const SHIPS=[{n:'الكشّاف',c:'#7cf',cost:0},{n:'النار',c:'#f96',cost:15},{n:'الزمرد',c:'#6f9',cost:40},{n:'الملكي',c:'#fd6',cost:80},{n:'الشبح',c:'#c8f',cost:150}];
 // audio
 let AC=null;function beep(f,d,t,v,sl){if(!save.snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),gn=AC.createGain();o.type=t||'sine';o.frequency.value=f;if(sl)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*sl),AC.currentTime+d);gn.gain.value=v||.06;gn.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 const R=(a,b)=>a+Math.random()*(b-a);
+const MT=[{t:'اجمع 15 نجمة في لعبة واحدة',k:'stars',n:15,r:8},{t:'اعمل 12 مدار في لعبة واحدة',k:'hops',n:12,r:10},{t:'وصّل كومبو x5',k:'combo',n:5,r:8},{t:'اوصل نتيجة 600',k:'score',n:600,r:12},{t:'اجمع 30 نجمة في لعبة واحدة',k:'stars',n:30,r:15},{t:'اعمل 25 مدار في لعبة واحدة',k:'hops',n:25,r:20},{t:'وصّل كومبو x10',k:'combo',n:10,r:20},{t:'اوصل نتيجة 1500',k:'score',n:1500,r:25}];
+function pickMissions(){save.ms=save.ms||[];while(save.ms.length<3){const c=MT[Math.floor(Math.random()*MT.length)];if(!save.ms.includes(MT.indexOf(c)))save.ms.push(MT.indexOf(c))}}
+function checkMissions(sc){const done=[];save.ms=save.ms.filter(i=>{const m=MT[i];const v=m.k==='stars'?S.starsGot:m.k==='hops'?S.hops:m.k==='combo'?S.maxCombo:sc;if(v>=m.n){save.stars+=m.r;done.push(m);return false}return true});pickMissions();return done}
 let S;// state
 let stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random(),y:Math.random(),z:R(.1,.6),s:R(.6,2)});
-function newGame(){S={t:0,px:0,py:0,vx:0,vy:0,state:'orbit',cur:null,ang:0,dir:1,orR:0,planets:[],items:[],parts:[],camY:0,top:0,score:0,starsGot:0,combo:0,shield:0,magnet:0,dead:false,genY:0,hops:0,shake:0,msgs:[],trail:[],hopsNoCrumble:0,lastCur:null};
+function newGame(){S={t:0,px:0,py:0,vx:0,vy:0,state:'orbit',cur:null,ang:0,dir:1,orR:0,planets:[],items:[],parts:[],camY:0,top:0,score:0,starsGot:0,combo:0,shield:0,magnet:0,dead:false,genY:0,hops:0,shake:0,msgs:[],trail:[],hopsNoCrumble:0,lastCur:null,wall:-260,slow:0,zone:0,maxCombo:0};
  const p=mkPlanet(0,0,'normal');p.r=34;p.ring=70;S.planets.push(p);S.cur=p;S.genY=0;S.orR=p.ring-6;S.ang=Math.PI/2;S.px=0;S.py=S.orR;p.life=1;
  for(let i=0;i<6;i++)gen();}
 let uid=1;
@@ -50,7 +53,8 @@ function gen(){const lvl=S.hops;const gap=Math.min(150+lvl*3,260);S.genY+=R(gap*
  if(type==='hole'){// ensure a normal one nearby
    const q=mkPlanet(R(-half,half),S.genY+R(40,90),'normal');S.planets.push(q)}
  // items
- if(Math.random()<.7){const s=S.items.push({x:p.x+R(-90,90),y:p.y+R(60,140),k:Math.random()<.1?'shield':Math.random()<.08?'magnet':'star',a:1})}
+ if(Math.random()<.7){const s=S.items.push({x:p.x+R(-90,90),y:p.y+R(60,140),k:Math.random()<.1?'shield':Math.random()<.08?'magnet':Math.random()<.07?'clock':'star',a:1})}
+ if(lvl>9&&Math.random()<.3){const dr=Math.random()<.5?1:-1;S.items.push({x:-dr*(Math.max(W,420)/2+30),y:S.genY+R(60,140),k:'comet',a:1,vx:dr*R(110,190)})}
  if(lvl>6&&Math.random()<.3){S.items.push({x:R(-half,half),y:S.genY+R(80,150),k:'mine',a:1,ph:R(0,6)})}}
 function pos(p){return p.type==='mover'?p.bx+Math.sin(S.t*p.sp+p.ph)*p.amp:p.x}
 function burst(x,y,col,n,sp){for(let i=0;i<n;i++){const a=R(0,6.28),v=R(.3,1)*(sp||160);S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:R(.4,.9),m:.9,c:col,s:R(1.5,4)})}}
@@ -61,16 +65,18 @@ function capture(p){S.state='orbit';S.cur=p;const dx=S.px-pos(p),dy=S.py-p.y;con
  // direction from cross product
  const cr=dx*S.vy-dy*S.vx;S.dir=cr>=0?1:-1;S.px=pos(p)-pos(p);// we store position relative to planet
  S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;p.life=1;
- if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);const gain=10*S.combo;S.score+=gain;beep(300+S.combo*40,.2,'sine',.08);msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
+ if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo;S.score+=gain;beep(300+S.combo*40,.2,'sine',.08);msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
  else{S.combo=0}}
 // world coords for player: orbit => relative, fly => absolute. unify with absolute
 function absPos(){return S.state==='orbit'?{x:pos(S.cur)+S.px,y:S.cur.y+S.py}:{x:S.px,y:S.py}}
 function die(why){if(S.dead)return;if(S.shield>0&&why!=='out'){S.shield=0;burst(absPos().x,absPos().y,'#7cf',24,260);beep(200,.3,'square',.08,.5);msg('الدرع اتكسر','#7cf');S.shield=0;S.invuln=1.2;if(S.state==='fly'){const a=absPos();/*bounce away*/S.vx*=-.5;S.vy=Math.abs(S.vy)*.5+80}return}
  if(S.invuln>0&&why!=='out')return;S.dead=true;S.shake=1;const a=absPos();burst(a.x,a.y,SHIPS[save.ship].c,40,300);beep(140,.7,'sawtooth',.1,.3);
- save.stars+=S.starsGot;const sc=Math.floor(S.score+S.top/10);S.final=sc;const nb=sc>save.best;if(nb)save.best=sc;persist();
- setTimeout(()=>{document.getElementById('res').innerHTML='النتيجة: <b>'+sc+'</b><br>أعلى نتيجة: '+save.best+(nb?' 🏆 رقم قياسي جديد!':'')+'<br>⭐ '+S.starsGot+' (إجمالي '+save.stars+')<br>مدارات: '+S.hops+(why==='crumble'?'<br>الكوكب انهار عليك':why==='hole'?'<br>ثقب أسود بلعك':why==='mine'?'<br>لغم':why==='out'?'<br>خرجت من المجال':'');document.getElementById('over').classList.remove('hide')},900)}
+ save.stars+=S.starsGot;const sc=Math.floor(S.score+S.top/10);S.final=sc;const dm=checkMissions(sc);const nb=sc>save.best;if(nb)save.best=sc;persist();
+ setTimeout(()=>{document.getElementById('res').innerHTML='النتيجة: <b>'+sc+'</b><br>أعلى نتيجة: '+save.best+(nb?' 🏆 رقم قياسي جديد!':'')+'<br>⭐ '+S.starsGot+' (إجمالي '+save.stars+')<br>مدارات: '+S.hops+(dm.length?'<br>✅ مهمة خلصت: '+dm.map(m=>m.t+' (+'+m.r+'⭐)').join('، '):'')+(why==='crumble'?'<br>الكوكب انهار عليك':why==='hole'?'<br>ثقب أسود بلعك':why==='mine'?'<br>لغم':why==='out'?'<br>خرجت من المجال':why==='wall'?'<br>الفراغ الأحمر لحقك':why==='comet'?'<br>مذنّب ضربك':'');document.getElementById('over').classList.remove('hide')},900)}
 let running=false,last=0;
-function step(dt){S.t+=dt;if(S.invuln>0)S.invuln-=dt;
+function step(dt){if(S.slow>0){S.slow-=dt;dt*=.5}S.t+=dt;if(S.hops>=6&&!S.dead){S.wall+=(18+Math.min(S.hops,50)*1.1)*dt;const a0=absPos();if(a0.y<S.wall+8)die('wall');if(S.wall<S.camY-H*.5)S.wall=S.camY-H*.5}
+ const zi=Math.floor(S.top/2500);if(zi>S.zone){S.zone=zi;msg('🌌 '+ZN[zi%ZN.length],'#9ff');beep(700,.4,'triangle',.07,1.5)}
+if(S.invuln>0)S.invuln-=dt;
  for(const p of S.planets){if(p.type==='mover')p.x=pos(p)}
  if(!S.dead){
  if(S.state==='orbit'){const p=S.cur;const w=(260/S.orR)*S.dir*(p.type==='mover'?1:1);S.ang+=w*dt*.9;S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;
@@ -89,9 +95,10 @@ function step(dt){S.t+=dt;if(S.invuln>0)S.invuln-=dt;
  const a=absPos();
  if(a.y>S.top)S.top=a.y;
  // items
- for(const it of S.items){if(it.a<=0)continue;const dx=it.x-a.x,dy=it.y-a.y,d=Math.hypot(dx,dy);
+ for(const it of S.items){if(it.k==='comet'){it.x+=it.vx*dt;if(Math.abs(it.x)>Math.max(W,420)/2+40)it.vx*=-1}
+  if(it.a<=0)continue;const dx=it.x-a.x,dy=it.y-a.y,d=Math.hypot(dx,dy);
   if(S.magnet>0&&it.k==='star'&&d<200){it.x-=dx/d*300*dt;it.y-=dy/d*300*dt}
-  if(d<24){it.a=0;if(it.k==='star'){S.starsGot++;S.score+=5;beep(880,.12,'sine',.06);burst(it.x,it.y,'#fd6',8,120)}else if(it.k==='shield'){S.shield=1;msg('درع 🛡️','#7cf');beep(600,.3,'triangle',.07)}else if(it.k==='magnet'){S.magnet=8;msg('مغناطيس 🧲','#f7c');beep(500,.3,'triangle',.07)}else if(it.k==='mine'){die('mine');burst(it.x,it.y,'#f55',20,200)}}}
+  if(d<24){it.a=it.k==='comet'?1:0;if(it.k==='star'){S.starsGot++;S.score+=5;beep(880,.12,'sine',.06);burst(it.x,it.y,'#fd6',8,120)}else if(it.k==='shield'){S.shield=1;msg('درع 🛡️','#7cf');beep(600,.3,'triangle',.07)}else if(it.k==='magnet'){S.magnet=8;msg('مغناطيس 🧲','#f7c');beep(500,.3,'triangle',.07)}else if(it.k==='clock'){S.slow=6;msg('وقت بطيء ⏱️','#9ff');beep(300,.4,'sine',.07,.6)}else if(it.k==='comet'){it.a=1;if(d<20)die('comet')}else if(it.k==='mine'){die('mine');burst(it.x,it.y,'#f55',20,200)}}}
  if(S.magnet>0)S.magnet-=dt;
  // generate
  while(S.genY<S.top+H*1.4)gen();
@@ -106,7 +113,7 @@ function sy(y){return H*.65-(y-S.camY)}
 function sx(x){return W/2+x}
 function drawShip(ctx,x,y,rot,col,sz){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,-sz);ctx.lineTo(sz*.7,sz*.8);ctx.lineTo(0,sz*.4);ctx.lineTo(-sz*.7,sz*.8);ctx.closePath();ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-sz*.1,sz*.22,0,6.3);ctx.fill();ctx.restore()}
 function draw(){g.setTransform(DPR,0,0,DPR,0,0);
- const gr=g.createLinearGradient(0,0,0,H);const h=(S.camY/40)%360;gr.addColorStop(0,'hsl('+(250+Math.sin(S.camY/900)*40)+',60%,8%)');gr.addColorStop(1,'hsl('+(280+Math.sin(S.camY/700)*40)+',70%,16%)');g.fillStyle=gr;g.fillRect(0,0,W,H);
+ const gr=g.createLinearGradient(0,0,0,H);const h=(S.camY/40)%360;gr.addColorStop(0,'hsl('+((250+S.zone*55)%360+Math.sin(S.camY/900)*25)+',60%,8%)');gr.addColorStop(1,'hsl('+((280+S.zone*55)%360+Math.sin(S.camY/700)*25)+',70%,16%)');g.fillStyle=gr;g.fillRect(0,0,W,H);
  g.save();if(S.shake>0)g.translate(R(-6,6)*S.shake,R(-6,6)*S.shake);
  for(const s of stars){const y=((s.y*H+S.camY*s.z)%H);g.globalAlpha=.4+s.z;g.fillStyle='#fff';g.fillRect(s.x*W,H-y,s.s,s.s)}g.globalAlpha=1;
  // planets
@@ -121,7 +128,8 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
  for(const it of S.items){if(it.a<=0)continue;const x=sx(it.x),y=sy(it.y);if(y<-30||y>H+30)continue;g.font='20px sans-serif';g.textAlign='center';g.textBaseline='middle';
   if(it.k==='star'){g.fillStyle='#fd6';g.beginPath();for(let i=0;i<10;i++){const r=i%2?5:11,a=-1.57+i*.628;g.lineTo(x+Math.cos(a+S.t)*r,y+Math.sin(a+S.t)*r)}g.fill()}
   else if(it.k==='mine'){g.fillStyle='#f44';g.beginPath();g.arc(x,y,9,0,6.3);g.fill();g.strokeStyle='#f88';g.lineWidth=2;for(let i=0;i<8;i++){const a=i*.785+S.t*2;g.beginPath();g.moveTo(x+Math.cos(a)*9,y+Math.sin(a)*9);g.lineTo(x+Math.cos(a)*15,y+Math.sin(a)*15);g.stroke()}}
-  else g.fillText(it.k==='shield'?'🛡️':'🧲',x,y)}
+  else if(it.k==='comet'){const gx=g.createLinearGradient(x,y,x-it.vx*.6,y);gx.addColorStop(0,'rgba(120,230,255,.9)');gx.addColorStop(1,'rgba(120,230,255,0)');g.strokeStyle=gx;g.lineWidth=8;g.lineCap='round';g.beginPath();g.moveTo(x,y);g.lineTo(x-it.vx*.6,y);g.stroke();g.fillStyle='#fff';g.beginPath();g.arc(x,y,8,0,6.3);g.fill()}
+  else g.fillText(it.k==='shield'?'🛡️':it.k==='clock'?'⏱️':'🧲',x,y)}
  // trail
  for(const t of S.trail){g.globalAlpha=Math.max(0,t.l);g.fillStyle=SHIPS[save.ship].c;g.beginPath();g.arc(sx(t.x),sy(t.y),3*t.l+1,0,6.3);g.fill()}g.globalAlpha=1;
  // ship
@@ -131,6 +139,7 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
   if(S.shield>0){g.strokeStyle='#7cf';g.lineWidth=2;g.beginPath();g.arc(sx(a.x),sy(a.y),20,0,6.3);g.stroke()}
   if(S.magnet>0){g.strokeStyle='rgba(255,120,200,.5)';g.beginPath();g.arc(sx(a.x),sy(a.y),200*(.8+.2*Math.sin(S.t*8)),0,6.3);g.stroke()}}
  for(const p of S.parts){g.globalAlpha=Math.max(0,p.l/p.m);g.fillStyle=p.c;g.fillRect(sx(p.x)-p.s/2,sy(p.y)-p.s/2,p.s,p.s)}g.globalAlpha=1;
+ {const wy=sy(S.wall);if(wy<H+50){const wg=g.createLinearGradient(0,wy-90,0,wy+4);wg.addColorStop(0,'rgba(255,40,60,0)');wg.addColorStop(1,'rgba(255,40,60,.75)');g.fillStyle=wg;g.fillRect(0,wy-90,W,94);g.fillStyle='#200';g.fillRect(0,wy,W,H);g.strokeStyle='#f64';g.lineWidth=3;g.beginPath();for(let x=0;x<=W;x+=12)g.lineTo(x,wy+Math.sin(x*.05+S.t*4)*4);g.stroke()}}
  g.restore();
  // HUD
  g.fillStyle='#fff';g.font='700 26px system-ui';g.textAlign='center';g.textBaseline='top';g.fillText(Math.floor(S.score+S.top/10),W/2,14);
@@ -140,7 +149,7 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
 function loop(ts){if(!running)return;const dt=Math.min(.05,(ts-last)/1000||0.016);last=ts;step(dt);draw();requestAnimationFrame(loop)}
 function start(){document.getElementById('menu').classList.add('hide');document.getElementById('over').classList.add('hide');newGame();running=true;last=performance.now();requestAnimationFrame(loop)}
 function toMenu(){running=false;document.getElementById('over').classList.add('hide');document.getElementById('menu').classList.remove('hide');renderMenu()}
-function renderMenu(){document.getElementById('best').innerHTML='أعلى نتيجة: <b>'+save.best+'</b> · ⭐ '+save.stars;const el=document.getElementById('ships');el.innerHTML='';SHIPS.forEach((s,i)=>{const d=document.createElement('div');const un=save.stars>=s.cost||save.own&&save.own[i];d.className='ship'+(save.ship===i?' sel':'')+(un?'':' lock');const c=document.createElement('canvas');c.width=c.height=80;drawShip(c.getContext('2d'),40,42,0,s.c,24);d.appendChild(c);d.appendChild(document.createTextNode(s.n+(un?'':' ⭐'+s.cost)));d.onclick=()=>{if(un){save.ship=i;persist();renderMenu()}};el.appendChild(d)});document.getElementById('snd').textContent=save.snd?'🔊 الصوت: شغال':'🔇 الصوت: مقفول'}
+function renderMenu(){pickMissions();document.getElementById('best').innerHTML='أعلى نتيجة: <b>'+save.best+'</b> · ⭐ '+save.stars+'<br><small>📋 المهام:<br>'+save.ms.map(i=>MT[i].t+' (+'+MT[i].r+'⭐)').join('<br>')+'</small>';const el=document.getElementById('ships');el.innerHTML='';SHIPS.forEach((s,i)=>{const d=document.createElement('div');const un=save.stars>=s.cost||save.own&&save.own[i];d.className='ship'+(save.ship===i?' sel':'')+(un?'':' lock');const c=document.createElement('canvas');c.width=c.height=80;drawShip(c.getContext('2d'),40,42,0,s.c,24);d.appendChild(c);d.appendChild(document.createTextNode(s.n+(un?'':' ⭐'+s.cost)));d.onclick=()=>{if(un){save.ship=i;persist();renderMenu()}};el.appendChild(d)});document.getElementById('snd').textContent=save.snd?'🔊 الصوت: شغال':'🔇 الصوت: مقفول'}
 document.getElementById('play').onclick=start;document.getElementById('again').onclick=start;document.getElementById('tomenu').onclick=toMenu;
 document.getElementById('snd').onclick=()=>{save.snd=save.snd?0:1;persist();renderMenu()};
 function tap(e){if(!running||!S||S.dead)return;launch()}
