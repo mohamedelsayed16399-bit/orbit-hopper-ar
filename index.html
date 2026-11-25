@@ -20,7 +20,7 @@ button.s{font-size:15px;padding:8px 18px;background:#2a2550;box-shadow:none}
 <div class="ov" id="menu">
 <h1>قفّاز المدارات</h1>
 <p>أنت في مدار كوكب. دوس على الشاشة تنطلق في خط مستقيم، وقرّب من كوكب تاني عشان الجاذبية تمسكك. طلّع لفوق أعلى ما تقدر.</p>
-<p>🔴 بعد كام مدار فراغ أحمر بيطلع من تحت ويجري وراك. المذنّبات خطر، والساعة ⏱️ بتبطّأ الوقت.</p><p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
+<p>🔴 بعد كام مدار فراغ أحمر بيطلع من تحت ويجري وراك. المذنّبات خطر، والساعة ⏱️ بتبطّأ الوقت.</p><p>❄️ جليد = اندفاعة أقوى · ☀️ شمس = نقط x3 بس بتنهار بسرعة · 🪐 عملاق غازي = مدار واسع وأمان أكتر.</p><p>⚠️ الكوكب بينهار بعد كام ثانية، متفضلش كتير. الثقوب السوداء بتبلعك. خد النجوم والدروع.</p>
 <div id="best"></div>
 <div class="ships" id="ships"></div>
 <button id="play">ابدأ</button>
@@ -45,10 +45,11 @@ function newGame(){S={t:0,px:0,py:0,vx:0,vy:0,state:'orbit',cur:null,ang:0,dir:1
  const p=mkPlanet(0,0,'normal');p.r=34;p.ring=70;S.planets.push(p);S.cur=p;S.genY=0;S.orR=p.ring-6;S.ang=Math.PI/2;S.px=0;S.py=S.orR;p.life=1;
  for(let i=0;i<6;i++)gen();}
 let uid=1;
-function mkPlanet(x,y,type){const r=type==='hole'?R(20,28):R(22,40);return{id:uid++,x,y,bx:x,r,ring:r+R(34,50),type,hue:R(0,360),life:1,ph:R(0,6),amp:type==='mover'?R(50,110):0,sp:R(.6,1.2),used:false}}
+function mkPlanet(x,y,type){let r=type==='hole'?R(20,28):R(22,40),ring=r+R(34,50),hue=R(0,360);if(type==='gas'){r=R(42,52);ring=r+R(70,85)}if(type==='ice'){hue=190}if(type==='sun'){r=R(28,34);hue=45}
+ return{id:uid++,x,y,bx:x,r,ring,type,hue,life:1,ph:R(0,6),amp:type==='mover'?R(50,110):0,sp:R(.6,1.2),used:false}}
 function gen(){const lvl=S.hops;const gap=Math.min(150+lvl*3,260);S.genY+=R(gap*.8,gap*1.1);
  const half=Math.min(W,420)/2-50;let type='normal';const r=Math.random();
- if(lvl>4&&r<.22)type='mover';if(lvl>8&&r>.86)type='hole';
+ if(lvl>4&&r<.2)type='mover';else if(lvl>3&&r<.32)type='gas';else if(lvl>3&&r<.44)type='ice';else if(lvl>7&&r<.54)type='sun';if(lvl>8&&r>.9)type='hole';
  const x=R(-half,half);const p=mkPlanet(x,S.genY,type);S.planets.push(p);
  if(type==='hole'){// ensure a normal one nearby
    const q=mkPlanet(R(-half,half),S.genY+R(40,90),'normal');S.planets.push(q)}
@@ -59,13 +60,13 @@ function gen(){const lvl=S.hops;const gap=Math.min(150+lvl*3,260);S.genY+=R(gap*
 function pos(p){return p.type==='mover'?p.bx+Math.sin(S.t*p.sp+p.ph)*p.amp:p.x}
 function burst(x,y,col,n,sp){for(let i=0;i<n;i++){const a=R(0,6.28),v=R(.3,1)*(sp||160);S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:R(.4,.9),m:.9,c:col,s:R(1.5,4)})}}
 function msg(t,c){S.msgs.push({t,c:c||'#fff',l:1.4})}
-function launch(){if(S.state!=='orbit')return;const p=S.cur;const sp=330+Math.min(S.hops*6,140);
+function launch(){if(S.state!=='orbit')return;const p=S.cur;let sp=330+Math.min(S.hops*6,140);if(p.type==='ice'){sp*=1.35;msg('دفعة جليد ❄️','#9ef')}
  const A0=absPos();S.px=A0.x;S.py=A0.y;const tx=-Math.sin(S.ang)*S.dir,ty=Math.cos(S.ang)*S.dir;S.vx=tx*sp;S.vy=ty*sp;S.state='fly';S.lastCur=p;S.leave=S.t;beep(520,.18,'triangle',.07,2);burst(S.px,S.py,'#fff',8,90);}
 function capture(p){S.state='orbit';S.cur=p;const dx=S.px-pos(p),dy=S.py-p.y;const d=Math.hypot(dx,dy);S.orR=Math.max(p.r+14,Math.min(d,p.ring));S.ang=Math.atan2(dy,dx);
  // direction from cross product
  const cr=dx*S.vy-dy*S.vx;S.dir=cr>=0?1:-1;S.px=pos(p)-pos(p);// we store position relative to planet
  S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;p.life=1;
- if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo;S.score+=gain;beep(300+S.combo*40,.2,'sine',.08);msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
+ if(!p.used){p.used=true;S.hops++;S.combo=Math.min(S.combo+1,10);S.maxCombo=Math.max(S.maxCombo,S.combo);const gain=10*S.combo*(p.type==='sun'?3:1);S.score+=gain;beep(300+S.combo*40,.2,'sine',.08);msg('+'+gain+(S.combo>1?'  كومبو x'+S.combo:''),'#fd6');burst(pos(p),p.y,'hsl('+p.hue+',90%,65%)',16,200)}
  else{S.combo=0}}
 // world coords for player: orbit => relative, fly => absolute. unify with absolute
 function absPos(){return S.state==='orbit'?{x:pos(S.cur)+S.px,y:S.cur.y+S.py}:{x:S.px,y:S.py}}
@@ -80,7 +81,7 @@ if(S.invuln>0)S.invuln-=dt;
  for(const p of S.planets){if(p.type==='mover')p.x=pos(p)}
  if(!S.dead){
  if(S.state==='orbit'){const p=S.cur;const w=(260/S.orR)*S.dir*(p.type==='mover'?1:1);S.ang+=w*dt*.9;S.px=Math.cos(S.ang)*S.orR;S.py=Math.sin(S.ang)*S.orR;
-  p.life-=dt/(p.type==='normal'?(4.2-Math.min(S.hops*.04,1.6)):3);if(p.life<=0){die('crumble');p.dead=true}
+  p.life-=dt/(p.type==='gas'?7:p.type==='sun'?2.3:p.type==='mover'?3:(4.2-Math.min(S.hops*.04,1.6)));if(p.life<=0){die('crumble');p.dead=true}
   if(p.type==='hole'){die('hole')}
   const a=absPos();S.trail.push({x:a.x,y:a.y,l:.5});}
  else{ // fly with gravity
@@ -122,6 +123,9 @@ function draw(){g.setTransform(DPR,0,0,DPR,0,0);
   const col='hsl('+p.hue+',70%,55%)';
   g.strokeStyle='rgba(255,255,255,'+(p.used?.1:.28)+')';g.setLineDash([5,7]);g.lineWidth=1.5;g.beginPath();g.arc(x,y,p.ring,0,6.3);g.stroke();g.setLineDash([]);
   const sg=g.createRadialGradient(x-p.r*.3,y-p.r*.3,2,x,y,p.r);sg.addColorStop(0,'hsl('+p.hue+',80%,75%)');sg.addColorStop(1,'hsl('+p.hue+',70%,32%)');g.fillStyle=sg;g.beginPath();g.arc(x,y,p.r*(.4+.6*Math.max(0,Math.min(1,p.life))),0,6.3);g.fill();
+  if(p.type==='gas'){g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=3;for(let k=-1;k<=1;k++){g.beginPath();g.ellipse(x,y+k*p.r*.4,p.r,p.r*.15,0,0,6.3);g.stroke()}g.strokeStyle='rgba(255,230,180,.6)';g.lineWidth=4;g.beginPath();g.ellipse(x,y,p.r*1.5,p.r*.35,-.3,0,6.3);g.stroke()}
+  if(p.type==='sun'){const sgl=g.createRadialGradient(x,y,p.r*.5,x,y,p.r*2.2);sgl.addColorStop(0,'rgba(255,200,60,.8)');sgl.addColorStop(1,'rgba(255,120,0,0)');g.fillStyle=sgl;g.beginPath();g.arc(x,y,p.r*2.2,0,6.3);g.fill();g.fillStyle='#ffd24a';g.beginPath();g.arc(x,y,p.r*.9,0,6.3);g.fill()}
+  if(p.type==='ice'){g.strokeStyle='#cff';g.lineWidth=2;g.beginPath();g.arc(x,y,p.r+4,0,6.3);g.stroke()}
   if(p.type==='mover'){g.strokeStyle='#fd6';g.lineWidth=2;g.beginPath();g.arc(x,y,p.r+5,0,6.3);g.stroke()}
   if(S.cur===p&&S.state==='orbit'){g.strokeStyle=p.life<.35?'#f55':'#7f9';g.lineWidth=4;g.beginPath();g.arc(x,y,p.ring+6,-1.57,-1.57+6.28*Math.max(0,p.life));g.stroke()}}
  // items
